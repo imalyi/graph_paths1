@@ -72,6 +72,7 @@ class ResidentialBuilding:
         self.address = address
         self.location = location
         self.id_ = None
+        self.data_source = 'https://www.openstreetmap.org'
 
     def set_id(self, id_: int):
         self.id_ = id_
@@ -80,6 +81,7 @@ class ResidentialBuilding:
         return {
             'address': self.address.to_dict(),
             'location': self.location,
+            'source': self.data_source
         }
 
     def __str__(self):
@@ -87,7 +89,7 @@ class ResidentialBuilding:
 
 
 class PointOfInterest:
-    def __init__(self, amenity, address, location, name, tags):
+    def __init__(self, amenity:str, address, location:Location, name:str, tags: str):
         self.address = address
         self.location = location
         self.tags = json.loads(tags)
@@ -96,13 +98,16 @@ class PointOfInterest:
         self.id_ = None
         self.distance = -1
 
+        self.data_source = 'https://www.openstreetmap.org'
+
     def to_dict(self):
         data = {
                 'name': self.name,
                 'tags': self.tags,
                 'location': self.location,
                 'distance': self.distance,
-                'amenity': self.amenity
+                'amenity': self.amenity,
+                'source': self.data_source,
         }
         if self.address.is_valid:
             data['address'] = self.address.to_dict()
@@ -214,7 +219,7 @@ class Buildings:
                 if address_location.get(address.full, None) is None:
                     self.buildings_list.append(ResidentialBuilding(address, location))
                     address_location[address.full] = location
-        print(f"Unique address {len(self.buildings_list)}, amenity {len(self.amenities_list)}")
+        logging.info(f"Unique address {len(self.buildings_list)}, amenity {len(self.amenities_list)}")
         logging.info("Building info loading done")
 
     def set_ids(self):
