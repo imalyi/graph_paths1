@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 EXCLUDED_AMENITIES = [None, 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
 WINDOW = 11000
-MAX_DISTANCE = 1_900
+MAX_DISTANCE = 19_000
 
 
 class IDToData:
@@ -168,9 +168,6 @@ class Results:
             origin_obj = self.data_to_id.get(origin_id)
             destination_obj = self.data_to_id.get(destination_id)
             destination_obj.distance = distance
-            logging.debug(
-                f"Origin name: {origin_obj.address}; Destination ID: {destination_obj.name} with distance {distance} added to results"
-                )
 
             if self.results.get(origin_obj.address.full, None) is None:
                 self.results[origin_obj.address.full] = origin_obj.to_dict()
@@ -180,15 +177,13 @@ class Results:
                 self.results[origin_obj.address.full]['points_of_interest'][destination_obj.amenity] = []
             self.results[origin_obj.address.full]['points_of_interest'][destination_obj.amenity].append(destination_obj.to_dict())
             return True
-        #logging.debug(
-        #    f"Origin ID: {origin_id}; Destination ID: {destination_id} with distance {distance} rejected"
-        #    )
         return False
 
     def save_to_db(self):
-        logging.info("Start saving shortest paths")
+        logging.info(f"Start saving {len(self.results)} addresses")
         self.db.insert_many(self.results)
-        logging.info("Done saving shortest paths")
+        logging.info(f"Done saving {len(self.results)} addresses")
+        self.results.clear()
 
 
 class Buildings:
@@ -203,12 +198,12 @@ class Buildings:
         self.results = Results(self.id_to_data)
         self.get_buildings()
         self.set_ids()
-
         self.pairs = Pairs(self.amenities_list, self.buildings_list)
 
     def get_buildings(self):
         logging.info("Start loading buildings info..")
         buildings = self.osm.get_buildings()
+        address_location = {}
         for index, building in buildings.iterrows():
             address = Address(building.get('addr:street', None), building.get('addr:housenumber', None), building.get('addr:city', None))
             location = [building.geometry.centroid.x, building.geometry.centroid.y]
@@ -216,7 +211,10 @@ class Buildings:
                 poi = PointOfInterest(building.get('amenity'), address, location, building.get('name'), building.get('tags', "{}") or "{}")
                 self.amenities_list.append(poi)
             elif address.is_valid:
-                self.buildings_list.append(ResidentialBuilding(address, location))
+                if address_location.get(address.full, None) is None:
+                    self.buildings_list.append(ResidentialBuilding(address, location))
+                    address_location[address.full] = location
+        print(f"Unique address {len(self.buildings_list)}, amenity {len(self.amenities_list)}")
         logging.info("Building info loading done")
 
     def set_ids(self):
@@ -236,8 +234,6 @@ class Buildings:
         logging.info("Done building id adding")
 
     def calc_paths(self):
-        self.get_buildings()
-        self.set_ids()
         i = 1
         for origins, destinations in self.pairs.pairs:
             logging.info(f"Start calculating shortest paths for {i}/{self.pairs.chunk_amounts}. Pairs count {len(origins)}")
