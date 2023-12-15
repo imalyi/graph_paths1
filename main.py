@@ -7,7 +7,7 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 
 EXCLUDED_AMENITIES = [None, 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
 WINDOW = 11000
-MAX_DISTANCE = 19_000
+MAX_DISTANCE = 3_000
 
 
 class IDToData:
