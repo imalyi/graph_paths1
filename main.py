@@ -114,7 +114,7 @@ class Tags:
 
 
 class ResidentialBuilding:
-    def __init__(self, address, location: Location):
+    def __init__(self, address: Address, location: Location):
         self.address = address
         self.location = location
         self.id_ = None
@@ -176,7 +176,7 @@ class Pairs:
 
     @property
     def chunk_amounts(self) -> int:
-        return int(len(self.residential_houses_list) / WINDOW)
+        return round(len(self.residential_houses_list) / WINDOW)
 
     @property
     def pairs(self):
