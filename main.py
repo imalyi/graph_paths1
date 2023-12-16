@@ -5,8 +5,8 @@ from databas import MongoDatabase
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-EXCLUDED_AMENITIES = [None, 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
-WINDOW = 11000
+EXCLUDED_AMENITIES = ['unknown', 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
+WINDOW = 10000
 MAX_DISTANCE = 3_000
 
 
@@ -15,13 +15,44 @@ class IDToData:
         self.data = {}
 
     def add(self, id_, data):
-        self.data[id_] = data
+        if self.data.get(id_) is None:
+            self.data[id_] = [data]
+            return
+        else:
+            logging.warning(f"Graph id {id_} already exists in dict with data {data}")
+            self.data[id_].append(data)
 
     def get(self, id_):
         try:
             return self.data[id_]
         except KeyError:
             logging.warning(f"Cant find id {id_}", exc_info=True)
+
+
+class BuildingName:
+    def __init__(self, name: str) -> None:
+        if name is None:
+            name = 'unknown'
+        self.name = name.strip()
+
+    def __repr__(self):
+        return self.name
+
+    def __str__(self):
+        return self.name
+
+
+class Amenity:
+    def __init__(self, name: str) -> None:
+        if name is None:
+            name = 'unknown'
+        self.name = name.lower()
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
 
 class Address:
@@ -66,9 +97,24 @@ class Location:
     def __repr__(self):
         return f"({self.x}; {self.y})"
 
+    def to_dict(self):
+        return {'lat': self.x, 'lon': self.y}
+
+
+class Tags:
+    def __init__(self, tags: str) -> None:
+        try:
+            self.tags = json.loads(tags)
+        except Exception:
+            logging.warning(f"Error convert {tags} to dict", exc_info=True)
+            self.tags = {}
+
+    def to_dict(self):
+        return self.tags
+
 
 class ResidentialBuilding:
-    def __init__(self, address, location):
+    def __init__(self, address, location: Location):
         self.address = address
         self.location = location
         self.id_ = None
@@ -80,7 +126,7 @@ class ResidentialBuilding:
     def to_dict(self):
         return {
             'address': self.address.to_dict(),
-            'location': self.location,
+            'location': self.location.to_dict(),
             'source': self.data_source
         }
 
@@ -89,24 +135,23 @@ class ResidentialBuilding:
 
 
 class PointOfInterest:
-    def __init__(self, amenity:str, address, location:Location, name:str, tags: str):
+    def __init__(self, amenity: Amenity, address, location: Location, name: BuildingName, tags: Tags):
         self.address = address
         self.location = location
-        self.tags = json.loads(tags)
+        self.tags = tags
         self.amenity = amenity
         self.name = name
         self.id_ = None
         self.distance = -1
-
         self.data_source = 'https://www.openstreetmap.org'
 
     def to_dict(self):
         data = {
-                'name': self.name,
-                'tags': self.tags,
-                'location': self.location,
+                'name': str(self.name),
+                'tags': self.tags.to_dict(),
+                'location': self.location.to_dict(),
                 'distance': self.distance,
-                'amenity': self.amenity,
+                'amenity': str(self.amenity),
                 'source': self.data_source,
         }
         if self.address.is_valid:
@@ -122,7 +167,7 @@ class PointOfInterest:
 
 class Pairs:
     def __init__(self, amenities, residential_houses):
-        self.amenities_list = list(set(amenities))
+        self.amenities_list = amenities
         self.residential_houses_list = residential_houses
 
     @property
@@ -145,12 +190,14 @@ class Pairs:
             for amenity in self.amenities_list:
                 origins.append(address.id_)
                 destinations.append(amenity.id_)
-            if i == WINDOW:
-                logging.info(f"Pairs generated: {i * len(self.amenities_list)}")
+            if i >= WINDOW:
+                logging.info(f"For {i} addresses and {len(self.amenities_list)} amenities generated {len(destinations)} pairs")
                 yield origins, destinations
                 i = 0
                 origins.clear()
                 destinations.clear()
+        logging.info(f"For {len(self.residential_houses_list) - self.chunk_amounts * WINDOW} addresses {len(destinations)} pairs generated")
+        yield origins, destinations
 
 
 class Result:
@@ -170,17 +217,21 @@ class Results:
 
     def add(self, origin_id, destination_id, distance) -> bool:
         if distance < MAX_DISTANCE:
-            origin_obj = self.data_to_id.get(origin_id)
-            destination_obj = self.data_to_id.get(destination_id)
-            destination_obj.distance = distance
+            origin_objs = self.data_to_id.get(origin_id)
+            destination_objs = self.data_to_id.get(destination_id)
+            for origin_obj in origin_objs:
+                for destination_obj in destination_objs:
+                    destination_obj.distance = distance
+                    if self.results.get(origin_obj.address.full) is None:
+                        self.results[origin_obj.address.full] = origin_obj.to_dict()
+                        self.results[origin_obj.address.full]['points_of_interest'] = {}
 
-            if self.results.get(origin_obj.address.full, None) is None:
-                self.results[origin_obj.address.full] = origin_obj.to_dict()
-                self.results[origin_obj.address.full]['points_of_interest'] = {}
+                    if not isinstance(destination_obj, PointOfInterest):
+                        continue
 
-            if self.results[origin_obj.address.full]['points_of_interest'].get(destination_obj.amenity) is None:
-                self.results[origin_obj.address.full]['points_of_interest'][destination_obj.amenity] = []
-            self.results[origin_obj.address.full]['points_of_interest'][destination_obj.amenity].append(destination_obj.to_dict())
+                    if self.results[origin_obj.address.full]['points_of_interest'].get(destination_obj.amenity) is None:
+                        self.results[origin_obj.address.full]['points_of_interest'][str(destination_obj.amenity)] = []
+                    self.results[origin_obj.address.full]['points_of_interest'][str(destination_obj.amenity)].append(destination_obj.to_dict())
             return True
         return False
 
@@ -211,9 +262,12 @@ class Buildings:
         address_location = {}
         for index, building in buildings.iterrows():
             address = Address(building.get('addr:street', None), building.get('addr:housenumber', None), building.get('addr:city', None))
-            location = [building.geometry.centroid.x, building.geometry.centroid.y]
-            if building.get('amenity') not in EXCLUDED_AMENITIES:
-                poi = PointOfInterest(building.get('amenity'), address, location, building.get('name'), building.get('tags', "{}") or "{}")
+            location = Location(building.geometry.centroid.x, building.geometry.centroid.y)
+            amenity = Amenity(building.get('amenity'))
+            if str(amenity) not in EXCLUDED_AMENITIES:
+                tags = Tags(building.get('tags', "{}") or "{}")
+                name = BuildingName(building.get('name'))
+                poi = PointOfInterest(amenity, address, location, name, tags)
                 self.amenities_list.append(poi)
             elif address.is_valid:
                 if address_location.get(address.full, None) is None:
@@ -223,27 +277,27 @@ class Buildings:
         logging.info("Building info loading done")
 
     def set_ids(self):
-        logging.info("Start building id adding")
+        logging.info("Start buildings id adding")
         x = []
         y = []
         data = self.buildings_list + self.amenities_list
         for row in data:
-            x.append(row.location[0])
-            y.append(row.location[1])
+            x.append(row.location.x)
+            y.append(row.location.y)
         ids = self.graph.get_node_ids(x, y).values
         i = 0
         for id_ in ids:
             data[i].set_id(id_)
             self.id_to_data.add(id_=id_, data=data[i])
             i += 1
-        logging.info("Done building id adding")
+        logging.info(f"Done buildings id adding.")
 
     def calc_paths(self):
         i = 1
         for origins, destinations in self.pairs.pairs:
             logging.info(f"Start calculating shortest paths for {i}/{self.pairs.chunk_amounts}. Pairs count {len(origins)}")
-            dists = self.graph.shortest_path_lengths(origins, destinations)
-            logging.info(f"Done calculating shortest paths for {i}/{self.pairs.chunk_amounts}. Calculated {len(dists)} paths")
+            dists = self.graph.shortest_path_lengths(origins.copy(), destinations.copy())
+            logging.info(f"Done calculating shortest paths for {i}/{self.pairs.chunk_amounts}. Calculated {len(dists)} paths for {len(list(set(origins.copy())))} points")
             for orig, dest, dist in zip(origins, destinations, dists):
                 self.results.add(orig.copy(), dest.copy(), dist)
             self.results.save_to_db()
