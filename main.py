@@ -98,7 +98,7 @@ class Location:
         return f"({self.x}; {self.y})"
 
     def to_dict(self):
-        return {'lat': self.x, 'lon': self.y}
+        return [self.x, self.y]
 
 
 class Tags:
@@ -112,6 +112,11 @@ class Tags:
     def to_dict(self):
         return self.tags
 
+    def __str__(self):
+        return json.dumps(self.tags)
+
+    def __repr__(self):
+        return json.dumps(self.tags)
 
 class ResidentialBuilding:
     def __init__(self, address: Address, location: Location):
