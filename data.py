@@ -2,6 +2,7 @@ import json
 import logging
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+EXCLUDED_AMENITIES = ['unknown', 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
 
 
 class Location:
@@ -70,9 +71,6 @@ class ResidentialBuilding:
         self.id_ = None
         self.data_source = 'https://www.openstreetmap.org'
 
-    def set_id(self, id_: int):
-        self.id_ = id_
-
     def to_dict(self):
         return {
             'address': self.address.to_dict(),
@@ -89,6 +87,12 @@ class Amenity:
         if name is None:
             name = 'unknown'
         self.name = name.lower()
+
+    @property
+    def is_allowed(self):
+        if self.name in EXCLUDED_AMENITIES:
+            return False
+        return True
 
     def __str__(self):
         return self.name
@@ -113,3 +117,33 @@ class Tags:
 
     def __repr__(self):
         return json.dumps(self.tags)
+
+
+class PointOfInterest:
+    def __init__(self, amenity: Amenity, address, location: Location, name: BuildingName, tags: Tags):
+        self.address = address
+        self.location = location
+        self.tags = tags
+        self.amenity = amenity
+        self.name = name
+        self.id_ = None
+        self.distance = -1
+        self.data_source = 'https://www.openstreetmap.org'
+
+    def to_dict(self):
+        data = {
+                'name': str(self.name),
+                'tags': self.tags.to_dict(),
+                'location': self.location.to_dict(),
+                'distance': self.distance,
+                'amenity': str(self.amenity),
+                'source': self.data_source,
+        }
+        if self.address.is_valid:
+            data['address'] = self.address.to_dict()
+        return data
+
+    def __str__(self):
+        return f"{self.name}-{self.address}-{self.tags}"
+
+
