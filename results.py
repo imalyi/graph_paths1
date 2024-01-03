@@ -1,4 +1,4 @@
-from databas import MongoDatabase
+from database import MongoDatabase
 from data import ResidentialBuilding, PointOfInterest
 import logging
 

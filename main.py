@@ -1,5 +1,5 @@
 from pyrosm import OSM, get_data
-from databas import MongoDatabase
+from database import MongoDatabase
 from osm_residential_building import  *
 from  osm_points_of_interest import *
 from pairs import Pairs
@@ -10,13 +10,8 @@ from shortest_path_calculator import PathCalculator
 
 configure_logging()
 
-
-# возможность добавить другие аменити, дома из других источников к сушествующим
-
-
 osm = OSM(get_data('Gliwice'))
 db = MongoDatabase()
-#db.bulk_delete_points_of_interest()
 
 b = OSMResidentialBuildings(osm)
 pois = OSMPointsOfInterest(osm)
