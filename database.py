@@ -25,11 +25,8 @@ class MongoDatabase:
         except ServerSelectionTimeoutError:
             self.logger.error("Failed to connect to MongoDB server")
 
-    def insert_many(self, data: dict):
-        list_data = []
-        for address, document in data.items():
-            list_data.append(document.copy())
-        self.db['address'].insert_many(list_data)
+    def insert_many(self, data: list):
+        self.db['address'].insert_many(data)
 
     def bulk_delete_points_of_interest(self):
         try:

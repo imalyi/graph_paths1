@@ -29,11 +29,27 @@ class Results:
     def add(self, result: Result) -> None:
         if not result.is_distance_acceptable():
             return
-        self.results.setdefault(result.origin, {'points_of_interest': {}})
-        self.results[result.origin]['points_of_interest'].setdefault(str(result.destination.amenity), set()).add(result.destination)
+        self.results.setdefault(result.origin, {})
+        self.results[result.origin].setdefault(str(result.destination.amenity), set()).add((result.destination, result.distance,))
+
+    def _prepare_to_saving(self):
+        prepared_data = []
+        for origin, pois in self.results.items():
+            data_row = origin.to_dict()
+            data_row['points_of_interest'] = {}
+            for poi_type, poi_data in pois.items():
+                if data_row['points_of_interest'].get(poi_type) is None:
+                    data_row['points_of_interest'][poi_type] = []
+                for poi, distance in poi_data:
+                    poi_with_dist = poi.to_dict()
+                    poi_with_dist['distance'] = distance
+                    data_row['points_of_interest'][poi_type].append(poi_with_dist)
+            prepared_data.append(data_row)
+        return prepared_data
 
     def save_to_db(self):
+        prepared_data = self._prepare_to_saving()
         self.logger.info(f"Start saving {len(self.results)} addresses")
-        self.db.insert_many(self.results)
+        self.db.insert_many(prepared_data)
         self.logger.info(f"Done saving {len(self.results)} addresses")
         self.results.clear()

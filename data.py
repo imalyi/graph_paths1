@@ -24,7 +24,7 @@ class Location:
         return hash((self.x, self.y,))
 
     def to_dict(self):
-        return {"x": self.x, "y": self.y}
+        return [self.x, self.y]
 
 
 class Address:

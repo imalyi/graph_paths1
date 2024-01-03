@@ -9,18 +9,10 @@ from id_to_data import IDToData
 from shortest_path_calculator import PathCalculator
 
 configure_logging()
-
 osm = OSM(get_data('Gliwice'))
-db = MongoDatabase()
-
 b = OSMResidentialBuildings(osm)
 pois = OSMPointsOfInterest(osm)
-
 p = Pairs(pois, b)
 pd = PandanaGraph(osm)
-
-pois_ids = IDToData(pd)
-rb_ids = IDToData(pd)
-
 pthc = PathCalculator(pd, p)
 pthc.calc_paths()
