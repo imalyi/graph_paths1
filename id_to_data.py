@@ -5,20 +5,16 @@ configure_logging()
 
 
 class IDToData:
-    def __init__(self):
+    def __init__(self, graph):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.data = {}
+        self.graph = graph
 
-    def add(self, id_, data):
-        if self.data.get(id_) is None:
-            self.data[id_] = [data]
-            return
-        else:
-            self.logger.info(f"Graph node with ID:{id_} already exists in DB")
-            self.data[id_].append(data)
-
-    def get(self, id_):
-        try:
-            return self.data[id_]
-        except KeyError:
-            self.logger.error(f"Cant find id {id_}")
+    def generate_nodes_ids(self, source):
+        logging.info("Start generating nodes ids")
+        x = []
+        y = []
+        for row in source:
+            x.append(row.location.x)
+            y.append(row.location.y)
+        ids = self.graph.get_node_ids(x, y)
+        return ids

@@ -1,6 +1,7 @@
 import logging
 from data import Address, Location, Amenity, Tags, BuildingName, PointOfInterest
 
+
 class OSMPointsOfInterest:
     def __init__(self, osm):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -36,3 +37,6 @@ class OSMPointsOfInterest:
 
     def __len__(self):
         return len(self._data)
+
+    def __getitem__(self, index):
+        return self._data[index]

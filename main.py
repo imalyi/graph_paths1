@@ -1,26 +1,31 @@
 from pyrosm import OSM, get_data
 from databas import MongoDatabase
-from data import *
 from osm_residential_building import  *
 from  osm_points_of_interest import *
 from pairs import Pairs
+from logging_config import configure_logging
+from pandana_graph import PandanaGraph
+from id_to_data import IDToData
+from shortest_path_calculator import PathCalculator
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+configure_logging()
 
 
-# USE Visitor to export result
 # возможность добавить другие аменити, дома из других источников к сушествующим
-#шаблон строитель
 
 
 osm = OSM(get_data('Gliwice'))
 db = MongoDatabase()
 #db.bulk_delete_points_of_interest()
+
 b = OSMResidentialBuildings(osm)
-c = OSMPointsOfInterest(osm)
-p = Pairs(c, b)
+pois = OSMPointsOfInterest(osm)
 
-for ori, dest in p:
-    print(len(ori), len(dest))
+p = Pairs(pois, b)
+pd = PandanaGraph(osm)
 
-#b.calc_paths()
+pois_ids = IDToData(pd)
+rb_ids = IDToData(pd)
+
+pthc = PathCalculator(pd, p)
+pthc.calc_paths()

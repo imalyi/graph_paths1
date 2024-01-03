@@ -1,12 +1,13 @@
 import logging
 from data import Address, Location, ResidentialBuilding
 
+
 class OSMResidentialBuildings:
     def __init__(self, osm):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.osm = osm
-        self.buildings_list = self.get_buildings()
-        self.buildings_iterator = iter(self.buildings_list)
+        self._data = self.get_buildings()
+        self.buildings_iterator = iter(self._data)
 
     def __iter__(self):
         return self
@@ -15,7 +16,7 @@ class OSMResidentialBuildings:
         try:
             return next(self.buildings_iterator)
         except StopIteration:
-            self.buildings_iterator = iter(self.buildings_list)
+            self.buildings_iterator = iter(self._data)
             raise StopIteration
 
     def get_buildings(self):
@@ -31,5 +32,8 @@ class OSMResidentialBuildings:
         return buildings_list
 
     def __len__(self):
-        return len(self.buildings_list)
+        return len(self._data)
+
+    def __getitem__(self, index):
+        return self._data[index]
 

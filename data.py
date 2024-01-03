@@ -1,7 +1,6 @@
 import json
 import logging
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 EXCLUDED_AMENITIES = ['unknown', 'parking', 'waste_basket', 'bicycle_parking', 'fuel', 'toilets', 'bench']
 
 
@@ -14,10 +13,18 @@ class Location:
         return f"({self.x}; {self.y})"
 
     def __repr__(self):
-        return f"({self.x}; {self.y})"
+        return f"Location({self.x}, {self.y})"
+
+    def __eq__(self, other):
+        if isinstance(other, Location):
+            return self.x == other.x and self.y == other.y
+        return False
+
+    def __hash__(self):
+        return hash((self.x, self.y,))
 
     def to_dict(self):
-        return [self.x, self.y]
+        return {"x": self.x, "y": self.y}
 
 
 class Address:
@@ -50,6 +57,14 @@ class Address:
             'full': self.full
         }
 
+    def __eq__(self, other):
+        if isinstance(other, Address):
+            return (self.street, self.housenumber, self.city) == (other.street, other.housenumber, other.city)
+        return False
+
+    def __hash__(self):
+        return hash((self.street, self.housenumber, self.city))
+
 
 class BuildingName:
     def __init__(self, name: str) -> None:
@@ -62,6 +77,14 @@ class BuildingName:
 
     def __str__(self):
         return self.name
+
+    def __eq__(self, other):
+        if isinstance(other, BuildingName):
+            return self.name == other.name
+        return False
+
+    def __hash__(self):
+        return hash(self.name)
 
 
 class ResidentialBuilding:
@@ -80,6 +103,14 @@ class ResidentialBuilding:
 
     def __str__(self):
         return f"{self.address}"
+
+    def __eq__(self, other):
+        if isinstance(other, ResidentialBuilding):
+            return (self.address, self.location) == (other.address, other.location)
+        return False
+
+    def __hash__(self):
+        return hash((self.address, self.location))
 
 
 class Amenity:
@@ -100,6 +131,14 @@ class Amenity:
     def __repr__(self):
         return self.name
 
+    def __eq__(self, other):
+        if isinstance(other, Amenity):
+            return self.name == other.name
+        return False
+
+    def __hash__(self):
+        return hash(self.name)
+
 
 class Tags:
     def __init__(self, tags: str) -> None:
@@ -117,6 +156,14 @@ class Tags:
 
     def __repr__(self):
         return json.dumps(self.tags)
+
+    def __eq__(self, other):
+        if isinstance(other, Tags):
+            return self.tags == other.tags
+        return False
+
+    def __hash__(self):
+        return hash(json.dumps(self.tags))
 
 
 class PointOfInterest:
@@ -142,6 +189,26 @@ class PointOfInterest:
         if self.address.is_valid:
             data['address'] = self.address.to_dict()
         return data
+
+    def __eq__(self, other):
+        if isinstance(other, PointOfInterest):
+            return (
+                self.address == other.address and
+                self.location == other.location and
+                self.tags == other.tags and
+                self.amenity == other.amenity and
+                self.name == other.name
+            )
+        return False
+
+    def __hash__(self):
+        return hash((
+            self.address,
+            self.location,
+            self.tags,
+            self.amenity,
+            self.name
+        ))
 
     def __str__(self):
         return f"{self.name}-{self.address}-{self.tags}"
